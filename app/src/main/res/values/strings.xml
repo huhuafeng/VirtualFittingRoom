@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">虚拟试衣间</string>
+    <string name="camera_permission_rationale">需要摄像头权限才能使用试衣功能</string>
+    <string name="camera_permission_denied">摄像头权限被拒绝，请在设置中开启</string>
+    <string name="no_person_detected">请站在摄像头前</string>
+    <string name="photo_saved">已保存到相册</string>
+    <string name="tab_tops">上衣</string>
+    <string name="tab_pants">裤子</string>
+    <string name="capture_photo">拍照</string>
+    <string name="switch_camera">切换摄像头</string>
+</resources>

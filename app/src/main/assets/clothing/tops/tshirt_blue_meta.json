@@ -1,0 +1,23 @@
+{
+  "id": "tshirt_blue",
+  "name": "蓝色T恤",
+  "category": "TOP",
+  "thumbnail": "tops/tshirt_blue_thumb.png",
+  "image": "tops/tshirt_blue.png",
+  "imageWidth": 512,
+  "imageHeight": 600,
+  "anchorPoints": {
+    "leftShoulder":  { "x": 80,  "y": 50 },
+    "rightShoulder": { "x": 432, "y": 50 },
+    "neckCenter":    { "x": 256, "y": 30 },
+    "leftArmpit":    { "x": 100, "y": 150 },
+    "rightArmpit":   { "x": 412, "y": 150 },
+    "leftHem":       { "x": 110, "y": 580 },
+    "rightHem":      { "x": 402, "y": 580 }
+  },
+  "warpConfig": {
+    "type": "PERSPECTIVE",
+    "verticalScale": 1.1,
+    "horizontalScale": 1.2
+  }
+}

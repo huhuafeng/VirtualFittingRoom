@@ -1,0 +1,23 @@
+{
+  "id": "shirt_white",
+  "name": "白色衬衫",
+  "category": "TOP",
+  "thumbnail": "tops/shirt_white_thumb.png",
+  "image": "tops/shirt_white.png",
+  "imageWidth": 512,
+  "imageHeight": 650,
+  "anchorPoints": {
+    "leftShoulder":  { "x": 75,  "y": 45 },
+    "rightShoulder": { "x": 437, "y": 45 },
+    "neckCenter":    { "x": 256, "y": 25 },
+    "leftArmpit":    { "x": 95,  "y": 145 },
+    "rightArmpit":   { "x": 417, "y": 145 },
+    "leftHem":       { "x": 105, "y": 630 },
+    "rightHem":      { "x": 407, "y": 630 }
+  },
+  "warpConfig": {
+    "type": "PERSPECTIVE",
+    "verticalScale": 1.1,
+    "horizontalScale": 1.2
+  }
+}

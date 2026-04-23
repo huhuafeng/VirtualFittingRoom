@@ -1,0 +1,23 @@
+{
+  "id": "jacket_black",
+  "name": "黑色夹克",
+  "category": "TOP",
+  "thumbnail": "tops/jacket_black_thumb.png",
+  "image": "tops/jacket_black.png",
+  "imageWidth": 512,
+  "imageHeight": 700,
+  "anchorPoints": {
+    "leftShoulder":  { "x": 60,  "y": 60 },
+    "rightShoulder": { "x": 452, "y": 60 },
+    "neckCenter":    { "x": 256, "y": 35 },
+    "leftArmpit":    { "x": 90,  "y": 170 },
+    "rightArmpit":   { "x": 422, "y": 170 },
+    "leftHem":       { "x": 100, "y": 680 },
+    "rightHem":      { "x": 412, "y": 680 }
+  },
+  "warpConfig": {
+    "type": "PERSPECTIVE",
+    "verticalScale": 1.15,
+    "horizontalScale": 1.3
+  }
+}

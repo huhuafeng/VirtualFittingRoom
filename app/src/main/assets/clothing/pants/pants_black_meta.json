@@ -1,0 +1,22 @@
+{
+  "id": "pants_black",
+  "name": "黑色西裤",
+  "category": "PANTS",
+  "thumbnail": "pants/pants_black_thumb.png",
+  "image": "pants/pants_black.png",
+  "imageWidth": 512,
+  "imageHeight": 800,
+  "anchorPoints": {
+    "leftWaist":    { "x": 130, "y": 20 },
+    "rightWaist":   { "x": 382, "y": 20 },
+    "leftKnee":     { "x": 145, "y": 380 },
+    "rightKnee":    { "x": 367, "y": 380 },
+    "leftHem":      { "x": 155, "y": 780 },
+    "rightHem":     { "x": 357, "y": 780 }
+  },
+  "warpConfig": {
+    "type": "PERSPECTIVE",
+    "verticalScale": 1.0,
+    "horizontalScale": 1.1
+  }
+}

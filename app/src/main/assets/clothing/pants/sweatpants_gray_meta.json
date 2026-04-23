@@ -1,0 +1,22 @@
+{
+  "id": "sweatpants_gray",
+  "name": "灰色运动裤",
+  "category": "PANTS",
+  "thumbnail": "pants/sweatpants_gray_thumb.png",
+  "image": "pants/sweatpants_gray.png",
+  "imageWidth": 512,
+  "imageHeight": 800,
+  "anchorPoints": {
+    "leftWaist":    { "x": 110, "y": 20 },
+    "rightWaist":   { "x": 402, "y": 20 },
+    "leftKnee":     { "x": 130, "y": 380 },
+    "rightKnee":    { "x": 382, "y": 380 },
+    "leftHem":      { "x": 140, "y": 780 },
+    "rightHem":     { "x": 372, "y": 780 }
+  },
+  "warpConfig": {
+    "type": "PERSPECTIVE",
+    "verticalScale": 1.0,
+    "horizontalScale": 1.15
+  }
+}

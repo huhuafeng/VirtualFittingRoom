@@ -1,0 +1,22 @@
+{
+  "id": "jeans_blue",
+  "name": "蓝色牛仔裤",
+  "category": "PANTS",
+  "thumbnail": "pants/jeans_blue_thumb.png",
+  "image": "pants/jeans_blue.png",
+  "imageWidth": 512,
+  "imageHeight": 800,
+  "anchorPoints": {
+    "leftWaist":    { "x": 120, "y": 20 },
+    "rightWaist":   { "x": 392, "y": 20 },
+    "leftKnee":     { "x": 140, "y": 380 },
+    "rightKnee":    { "x": 372, "y": 380 },
+    "leftHem":      { "x": 150, "y": 780 },
+    "rightHem":     { "x": 362, "y": 780 }
+  },
+  "warpConfig": {
+    "type": "PERSPECTIVE",
+    "verticalScale": 1.0,
+    "horizontalScale": 1.1
+  }
+}
