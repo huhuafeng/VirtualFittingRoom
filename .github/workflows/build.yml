@@ -5,7 +5,7 @@ on:
     branches: [ main, master ]
   pull_request:
     branches: [ main, master ]
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   build:
@@ -24,14 +24,6 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Grant execute permission for gradlew
-        run: chmod +x gradlew || true
-
-      - name: Create gradlew wrapper
-        run: |
-          # Generate gradle wrapper if not present
-          gradle wrapper --gradle-version 8.9
-
       - name: Download MediaPipe model
         run: |
           mkdir -p app/src/main/assets/models
@@ -40,44 +32,37 @@ jobs:
 
       - name: Create placeholder clothing assets
         run: |
-          # Create simple placeholder PNGs for build testing
-          # These will be replaced with real clothing images later
           python3 -c "
-          import struct, zlib
+          import struct, zlib, os
 
           def create_placeholder_png(width, height, r, g, b, filepath):
-              def create_png(width, height, pixels):
-                  def chunk(chunk_type, data):
-                      c = chunk_type + data
+              def make_png(w, h, pixels):
+                  def chunk(ct, data):
+                      c = ct + data
                       return struct.pack('>I', len(data)) + c + struct.pack('>I', zlib.crc32(c) & 0xffffffff)
-
-                  header = b'\x89PNG\r\n\x1a\n'
-                  ihdr = chunk(b'IHDR', struct.pack('>IIBBBBB', width, height, 8, 6, 0, 0, 0))
+                  hdr = b'\x89PNG\r\n\x1a\n'
+                  ihdr = chunk(b'IHDR', struct.pack('>IIBBBBB', w, h, 8, 6, 0, 0, 0))
                   raw = b''
-                  for y in range(height):
+                  for y in range(h):
                       raw += b'\x00'
-                      for x in range(width):
+                      for x in range(w):
                           raw += bytes([pixels[y][x][0], pixels[y][x][1], pixels[y][x][2], pixels[y][x][3]])
                   idat = chunk(b'IDAT', zlib.compress(raw))
                   iend = chunk(b'IEND', b'')
-                  return header + ihdr + idat + iend
-
+                  return hdr + ihdr + idat + iend
               pixels = [[(r, g, b, 200)] * width for _ in range(height)]
+              os.makedirs(os.path.dirname(filepath), exist_ok=True)
               with open(filepath, 'wb') as f:
-                  f.write(create_png(width, height, pixels))
+                  f.write(make_png(width, height, pixels))
 
-          import os
-          tops_dir = 'app/src/main/assets/clothing/tops'
-          pants_dir = 'app/src/main/assets/clothing/pants'
-          os.makedirs(tops_dir, exist_ok=True)
-          os.makedirs(pants_dir, exist_ok=True)
-
-          create_placeholder_png(512, 600, 70, 130, 180, f'{tops_dir}/tshirt_blue.png')
-          create_placeholder_png(512, 700, 40, 40, 40, f'{tops_dir}/jacket_black.png')
-          create_placeholder_png(512, 650, 240, 240, 240, f'{tops_dir}/shirt_white.png')
-          create_placeholder_png(512, 800, 70, 100, 160, f'{pants_dir}/jeans_blue.png')
-          create_placeholder_png(512, 800, 30, 30, 30, f'{pants_dir}/pants_black.png')
-          create_placeholder_png(512, 800, 140, 140, 140, f'{pants_dir}/sweatpants_gray.png')
+          tops = 'app/src/main/assets/clothing/tops'
+          pants = 'app/src/main/assets/clothing/pants'
+          create_placeholder_png(512, 600, 70, 130, 180, f'{tops}/tshirt_blue.png')
+          create_placeholder_png(512, 700, 40, 40, 40, f'{tops}/jacket_black.png')
+          create_placeholder_png(512, 650, 240, 240, 240, f'{tops}/shirt_white.png')
+          create_placeholder_png(512, 800, 70, 100, 160, f'{pants}/jeans_blue.png')
+          create_placeholder_png(512, 800, 30, 30, 30, f'{pants}/pants_black.png')
+          create_placeholder_png(512, 800, 140, 140, 140, f'{pants}/sweatpants_gray.png')
           "
 
       - name: Build Debug APK

@@ -61,7 +61,7 @@ dependencies {
     implementation("com.google.mediapipe:tasks-vision:0.10.21")
 
     // OpenCV Android
-    implementation("org.opencv:opencv:4.9.0-0")
+    implementation("org.opencv:opencv:4.9.0")
 
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
