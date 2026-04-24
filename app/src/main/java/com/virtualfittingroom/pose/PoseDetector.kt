@@ -37,7 +37,7 @@ class PoseDetector(private val context: Context) {
 
     private fun initWithDelegate(delegate: Delegate) {
         val baseOptions = BaseOptions.builder()
-            .setModelAssetPath("models/pose_landmarker_heavy.task")
+            .setModelAssetPath("models/pose_landmarker_full.task")
             .setDelegate(delegate)
             .build()
 

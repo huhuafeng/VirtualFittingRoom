@@ -2,8 +2,8 @@
   "id": "jeans_blue",
   "name": "蓝色牛仔裤",
   "category": "PANTS",
-  "thumbnail": "pants/jeans_blue_thumb.png",
-  "image": "pants/jeans_blue.png",
+  "thumbnail": "jeans_blue_thumb.png",
+  "image": "jeans_blue.png",
   "imageWidth": 512,
   "imageHeight": 800,
   "anchorPoints": {

@@ -2,8 +2,8 @@
   "id": "sweatpants_gray",
   "name": "灰色运动裤",
   "category": "PANTS",
-  "thumbnail": "pants/sweatpants_gray_thumb.png",
-  "image": "pants/sweatpants_gray.png",
+  "thumbnail": "sweatpants_gray_thumb.png",
+  "image": "sweatpants_gray.png",
   "imageWidth": 512,
   "imageHeight": 800,
   "anchorPoints": {

@@ -2,8 +2,8 @@
   "id": "shirt_white",
   "name": "白色衬衫",
   "category": "TOP",
-  "thumbnail": "tops/shirt_white_thumb.png",
-  "image": "tops/shirt_white.png",
+  "thumbnail": "shirt_white_thumb.png",
+  "image": "shirt_white.png",
   "imageWidth": 512,
   "imageHeight": 650,
   "anchorPoints": {

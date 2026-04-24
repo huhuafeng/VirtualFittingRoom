@@ -29,8 +29,8 @@ jobs:
       - name: Download MediaPipe model
         run: |
           mkdir -p app/src/main/assets/models
-          curl -L -o app/src/main/assets/models/pose_landmarker_heavy.task \
-            "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task"
+          curl -L -o app/src/main/assets/models/pose_landmarker_full.task \
+            "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task"
 
       - name: Create placeholder clothing assets
         run: |

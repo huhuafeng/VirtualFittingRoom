@@ -2,8 +2,8 @@
   "id": "pants_black",
   "name": "黑色西裤",
   "category": "PANTS",
-  "thumbnail": "pants/pants_black_thumb.png",
-  "image": "pants/pants_black.png",
+  "thumbnail": "pants_black_thumb.png",
+  "image": "pants_black.png",
   "imageWidth": 512,
   "imageHeight": 800,
   "anchorPoints": {

@@ -2,8 +2,8 @@
   "id": "jacket_black",
   "name": "黑色夹克",
   "category": "TOP",
-  "thumbnail": "tops/jacket_black_thumb.png",
-  "image": "tops/jacket_black.png",
+  "thumbnail": "jacket_black_thumb.png",
+  "image": "jacket_black.png",
   "imageWidth": 512,
   "imageHeight": 700,
   "anchorPoints": {
