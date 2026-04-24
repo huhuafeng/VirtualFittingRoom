@@ -213,12 +213,13 @@ class MainActivity : AppCompatActivity() {
         }
 
         // Process segmentation mask
-        val masks = result.segmentationMasks()
-        if (masks != null && masks.isNotEmpty()) {
+        val masksOpt = result.segmentationMasks()
+        if (masksOpt.isPresent) {
             try {
-                val maskBuffer = masks[0].contents()
-                val maskWidth = masks[0].width()
-                val maskHeight = masks[0].height()
+                val maskList = masksOpt.get()
+                val maskBuffer = maskList[0].contents().asFloatBuffer()
+                val maskWidth = maskList[0].width()
+                val maskHeight = maskList[0].height()
                 val processedMask = maskProcessor.processMask(maskBuffer, maskWidth, maskHeight)
                 latestMask.set(processedMask)
 

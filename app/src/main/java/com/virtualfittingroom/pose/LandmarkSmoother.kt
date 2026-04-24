@@ -22,7 +22,7 @@ class LandmarkSmoother(private val alpha: Float = 0.3f) {
         val prev = smoothedLandmarks
 
         if (prev == null || prev.size != current.size) {
-            smoothedLandmarks = current.map {NormalizedLandmark.create(it.x(), it.y(), it.z(), it.visibility().orElse(1.0f)) }
+            smoothedLandmarks = current.map { NormalizedLandmark.create(it.x(), it.y(), it.z()) }
             return result
         }
 
@@ -31,8 +31,7 @@ class LandmarkSmoother(private val alpha: Float = 0.3f) {
             val sx = alpha * landmark.x() + (1 - alpha) * p.x()
             val sy = alpha * landmark.y() + (1 - alpha) * p.y()
             val sz = alpha * landmark.z() + (1 - alpha) * p.z()
-            val sv = alpha * (landmark.visibility().orElse(1.0f)) + (1 - alpha) * (p.visibility().orElse(1.0f))
-            NormalizedLandmark.create(sx, sy, sz, sv)
+            NormalizedLandmark.create(sx, sy, sz)
         }
 
         smoothedLandmarks = smoothed

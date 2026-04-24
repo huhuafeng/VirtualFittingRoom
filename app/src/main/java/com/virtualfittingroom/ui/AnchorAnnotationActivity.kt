@@ -1,6 +1,7 @@
 package com.virtualfittingroom.ui
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.*
 import android.net.Uri
 import android.os.Bundle
@@ -129,7 +130,7 @@ class AnchorAnnotationActivity : AppCompatActivity() {
     }
 
     private fun pickImage() {
-        val intent = android.content.Intent(Intent.ACTION_GET_CONTENT).apply {
+        val intent = Intent(Intent.ACTION_GET_CONTENT).apply {
             type = "image/*"
         }
         startActivityForResult(intent, REQUEST_PICK_IMAGE)

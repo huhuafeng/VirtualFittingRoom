@@ -68,7 +68,7 @@ jobs:
           "
 
       - name: Build Debug APK
-        run: gradle assembleDebug
+        run: gradle assembleDebug 2>&1 | tail -100
 
       - name: Build Release APK
         run: gradle assembleRelease
