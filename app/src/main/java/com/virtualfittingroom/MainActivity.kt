@@ -23,6 +23,7 @@ import com.virtualfittingroom.overlay.BlendProcessor
 import com.virtualfittingroom.overlay.ClothingWarpEngine
 import com.virtualfittingroom.pose.*
 import com.virtualfittingroom.ui.ClothingPanelAdapter
+import com.google.mediapipe.framework.image.ByteBufferExtractor
 import com.virtualfittingroom.util.PermissionHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -217,9 +218,9 @@ class MainActivity : AppCompatActivity() {
         if (masksOpt.isPresent) {
             try {
                 val maskList = masksOpt.get()
-                val maskBuffer = maskList[0].contents().asFloatBuffer()
-                val maskWidth = maskList[0].width()
-                val maskHeight = maskList[0].height()
+                val maskBuffer = ByteBufferExtractor.extract(maskList[0]).asFloatBuffer()
+                val maskWidth = maskList[0].width
+                val maskHeight = maskList[0].height
                 val processedMask = maskProcessor.processMask(maskBuffer, maskWidth, maskHeight)
                 latestMask.set(processedMask)
 

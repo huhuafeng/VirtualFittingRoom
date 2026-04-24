@@ -155,7 +155,7 @@ class SegmentationMaskProcessor {
         val hasPrev2 = prevMask2 != null && prevMask2!!.width == width && prevMask2!!.height == height
         val p2Pixels = if (hasPrev2) IntArray(width * height) else null
         if (hasPrev2) {
-            prevMask2!!.getPixels(p2Pixels, 0, width, 0, 0, width, height)
+            prevMask2!!.getPixels(p2Pixels!!, 0, width, 0, 0, width, height)
         }
 
         for (i in curPixels.indices) {
