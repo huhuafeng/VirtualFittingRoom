@@ -2,6 +2,7 @@ package com.virtualfittingroom
 
 import android.content.ContentValues
 import android.graphics.Bitmap
+import android.graphics.Matrix
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -58,6 +59,7 @@ class MainActivity : AppCompatActivity() {
 
     // Debug
     private var showDebug = false
+    private var frameCounter = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -187,7 +189,8 @@ class MainActivity : AppCompatActivity() {
         }
 
         latestFrame.set(processedBitmap)
-        poseDetector.detectAsync(processedBitmap, System.currentTimeMillis())
+        frameCounter++
+        poseDetector.detectAsync(processedBitmap, frameCounter)
     }
 
     private fun handlePoseResult(result: PoseLandmarkerResult, timestampMs: Long) {
@@ -364,7 +367,18 @@ class MainActivity : AppCompatActivity() {
                     bitmap.setPixels(pixels, 0, width, 0, y, width, 1)
                 }
             }
-            bitmap
+
+            // Rotate bitmap based on sensor orientation for portrait mode
+            val rotation = imageProxy.imageInfo.rotationDegrees
+            if (rotation != 0) {
+                val matrix = Matrix()
+                matrix.postRotate(rotation.toFloat())
+                val rotated = Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+                if (rotated !== bitmap) bitmap.recycle()
+                rotated
+            } else {
+                bitmap
+            }
         } catch (e: Exception) {
             Log.e("MainActivity", "Failed to convert ImageProxy to Bitmap", e)
             null
@@ -372,7 +386,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun flipHorizontal(bitmap: Bitmap): Bitmap {
-        val matrix = android.graphics.Matrix().apply {
+        val matrix = Matrix().apply {
             postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f)
         }
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
