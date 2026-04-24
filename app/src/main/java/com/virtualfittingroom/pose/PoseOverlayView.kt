@@ -18,6 +18,9 @@ class PoseOverlayView @JvmOverloads constructor(
 
     private var landmarks: List<NormalizedLandmark>? = null
     private var segmentationMask: Bitmap? = null
+    private var cachedScaledMask: Bitmap? = null
+    private var cachedMaskW = 0
+    private var cachedMaskH = 0
     private var showDebug = true
 
     private val landmarkPaint = Paint().apply {
@@ -73,11 +76,15 @@ class PoseOverlayView @JvmOverloads constructor(
         super.onDraw(canvas)
         if (!showDebug) return
 
-        // Draw segmentation mask
+        // Draw segmentation mask (cached)
         segmentationMask?.let { mask ->
-            val scaled = Bitmap.createScaledBitmap(mask, width, height, true)
-            canvas.drawBitmap(scaled, 0f, 0f, maskPaint)
-            scaled.recycle()
+            if (cachedMaskW != width || cachedMaskH != height || cachedScaledMask == null) {
+                cachedScaledMask?.recycle()
+                cachedScaledMask = Bitmap.createScaledBitmap(mask, width, height, true)
+                cachedMaskW = width
+                cachedMaskH = height
+            }
+            cachedScaledMask?.let { canvas.drawBitmap(it, 0f, 0f, maskPaint) }
         }
 
         // Draw skeleton lines

@@ -50,6 +50,7 @@ class CameraManager(
         // ImageAnalysis
         imageAnalyzer = ImageAnalysis.Builder()
             .setTargetResolution(android.util.Size(640, 480))
+            .setTargetRotation(previewView.display.rotation)
             .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
