@@ -271,7 +271,7 @@ class PoseTracker(private val context: Context) {
         // Dilate to ensure coverage of clothing edges
         val dilated = Mat()
         val kernel = Imgproc.getStructuringElement(
-            org.opencv.core.MorphShapes.MORPH_ELLIPSE,
+            Imgproc.MORPH_ELLIPSE,
             Size(5.0, 5.0)
         )
         Imgproc.dilate(blurred, dilated, kernel)
