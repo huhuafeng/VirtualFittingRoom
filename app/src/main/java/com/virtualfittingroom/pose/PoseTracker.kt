@@ -150,7 +150,7 @@ class PoseTracker(private val context: Context) {
         // Extract visibility from raw landmarks
         val vis = FloatArray(current.size)
         for (i in current.indices) {
-            vis[i] = if ((current[i].visibility() ?: 0f) > 0.5f) 1f else 0f
+            vis[i] = if (current[i].visibility().orElse(0f) > 0.5f) 1f else 0f
         }
         latestVisibility = vis
 
