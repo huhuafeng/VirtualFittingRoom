@@ -73,6 +73,14 @@ class PoseTracker(private val context: Context) {
     private var smoothedLandmarks: FloatArray? = null // flat: x0,y0,z0, x1,y1,z1, ...
     private var missingFrameCount = 0
 
+    /** Latest smoothed landmarks as flat array (x0,y0, x1,y1, ...) for skeleton overlay. */
+    var latestXY: FloatArray? = null
+        private set
+
+    /** Which delegate is being used (for debug display). */
+    var delegateName: String = "unknown"
+        private set
+
     var onPoseResult: ((PoseResult) -> Unit)? = null
 
     fun init(): Boolean {
@@ -92,6 +100,7 @@ class PoseTracker(private val context: Context) {
     }
 
     private fun createLandmarker(delegate: Delegate) {
+        delegateName = if (delegate == Delegate.GPU) "GPU" else "CPU"
         val baseOptions = BaseOptions.builder()
             .setModelAssetPath(MODEL_PATH)
             .setDelegate(delegate)
@@ -133,6 +142,14 @@ class PoseTracker(private val context: Context) {
 
         // Adaptive smoothing
         val smoothed = smoothLandmarks(current)
+
+        // Export XY for skeleton overlay (flat: x0,y0, x1,y1, ...)
+        val xy = FloatArray(current.size * 2)
+        for (i in current.indices) {
+            xy[i * 2] = smoothed[i * 3]
+            xy[i * 2 + 1] = smoothed[i * 3 + 1]
+        }
+        latestXY = xy
 
         // Map to BodyPose
         val bodyPose = mapToBodyPose(smoothed) ?: return

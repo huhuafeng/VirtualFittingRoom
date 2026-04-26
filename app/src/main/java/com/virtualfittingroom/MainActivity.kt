@@ -60,6 +60,14 @@ class MainActivity : AppCompatActivity() {
     // Single processing job — only one blend operation at a time
     private var processingJob: Job? = null
 
+    // FPS tracking
+    private var fpsFrameCount = 0
+    private var fpsLastTime = System.currentTimeMillis()
+    private var currentFps = 0
+
+    // Debug log throttling
+    private var lastLogTime = 0L
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -80,23 +88,25 @@ class MainActivity : AppCompatActivity() {
         clothingLoader = ClothingLoader(this)
 
         allClothingItems = clothingLoader.loadAll()
+
+        binding.debugLogView.log("App started")
+        binding.debugLogView.log("Clothes: ${allClothingItems.size} items loaded")
     }
 
     private fun setupUI() {
         // Clothing adapter
         clothingAdapter = ClothingAdapter { item ->
             if (item == null) {
-                // Deselected
                 if (currentTab == ClothingCategory.TOP) selectedTop.set(null)
                 else selectedPants.set(null)
             } else {
                 if (currentTab == ClothingCategory.TOP) selectedTop.set(item)
                 else selectedPants.set(item)
             }
-            // Hide result when no clothing selected
             if (selectedTop.get() == null && selectedPants.get() == null) {
                 binding.resultView.visibility = View.GONE
             }
+            logDebug()
         }
 
         binding.recyclerClothing.apply {
@@ -118,12 +128,11 @@ class MainActivity : AppCompatActivity() {
 
         updateClothingList()
 
-        // Camera switch
         binding.btnSwitchCamera.setOnClickListener {
             cameraHelper.switchCamera()
+            binding.debugLogView.log("Camera: ${if (cameraHelper.isFrontCamera()) "front" else "back"}")
         }
 
-        // Capture
         binding.btnCapture.setOnClickListener {
             capturePhoto()
         }
@@ -139,6 +148,8 @@ class MainActivity : AppCompatActivity() {
             if (granted) {
                 initPoseTracker()
                 startCamera()
+            } else {
+                binding.debugLogView.log("ERROR: camera denied")
             }
         }
     }
@@ -147,8 +158,11 @@ class MainActivity : AppCompatActivity() {
         val success = poseTracker.init()
         if (!success) {
             Toast.makeText(this, "姿态检测模型加载失败", Toast.LENGTH_LONG).show()
+            binding.debugLogView.log("ERROR: model load failed")
             return
         }
+
+        binding.debugLogView.log("Model: ${poseTracker.delegateName}")
 
         poseTracker.onPoseResult = { poseResult ->
             handlePoseResult(poseResult)
@@ -160,6 +174,7 @@ class MainActivity : AppCompatActivity() {
             processFrame(imageProxy)
         }
         cameraHelper.start(binding.previewView)
+        binding.debugLogView.log("Camera: started")
     }
 
     // === Frame Processing Pipeline ===
@@ -175,6 +190,15 @@ class MainActivity : AppCompatActivity() {
 
         latestFrame.set(processed)
         poseTracker.detectAsync(processed, frameCounter.incrementAndGet())
+
+        // FPS calculation
+        fpsFrameCount++
+        val now = System.currentTimeMillis()
+        if (now - fpsLastTime >= 1000) {
+            currentFps = fpsFrameCount
+            fpsFrameCount = 0
+            fpsLastTime = now
+        }
     }
 
     private fun handlePoseResult(result: PoseTracker.PoseResult) {
@@ -182,9 +206,17 @@ class MainActivity : AppCompatActivity() {
         val topItem = selectedTop.get()
         val pantsItem = selectedPants.get()
 
-        // Show/hide status text
+        // Update skeleton overlay
         runOnUiThread {
+            binding.skeletonView.updateLandmarks(poseTracker.latestXY)
             binding.statusText.visibility = View.GONE
+        }
+
+        // Update debug log (throttled to ~4 updates/sec)
+        val now = System.currentTimeMillis()
+        if (now - lastLogTime > 250) {
+            lastLogTime = now
+            logDebug()
         }
 
         if (topItem == null && pantsItem == null) return
@@ -193,23 +225,41 @@ class MainActivity : AppCompatActivity() {
         processingJob?.cancel()
         processingJob = lifecycleScope.launch(Dispatchers.Default) {
             try {
+                val blendStart = System.currentTimeMillis()
                 val blended = warpEngine.warpAndBlend(
                     frame, result.bodyPose, result.segmentationMask,
                     topItem, pantsItem
                 )
+                val blendMs = System.currentTimeMillis() - blendStart
 
                 withContext(Dispatchers.Main) {
                     lastBlendedBitmap?.recycle()
                     lastBlendedBitmap = blended
                     binding.resultView.setImageBitmap(blended)
                     binding.resultView.visibility = View.VISIBLE
+                    binding.debugLogView.log("Blend: ${blendMs}ms")
                 }
             } catch (e: CancellationException) {
                 // Normal — cancelled by next frame
             } catch (e: Exception) {
                 Log.e(TAG, "Blend error", e)
+                withContext(Dispatchers.Main) {
+                    binding.debugLogView.log("ERR blend: ${e.message}")
+                }
             }
         }
+    }
+
+    private fun logDebug() {
+        val top = selectedTop.get()
+        val pants = selectedPants.get()
+        val clothesInfo = buildString {
+            if (top != null) append(top.name)
+            if (top != null && pants != null) append(" + ")
+            if (pants != null) append(pants.name)
+            if (top == null && pants == null) append("none")
+        }
+        binding.debugLogView.log("FPS:$currentFps | Pose:OK | $clothesInfo")
     }
 
     // === Photo Capture ===
@@ -249,9 +299,6 @@ class MainActivity : AppCompatActivity() {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Save failed", e)
-            withContext(Dispatchers.Main) {
-                Toast.makeText(this@MainActivity, "保存失败", Toast.LENGTH_SHORT).show()
-            }
         }
     }
 

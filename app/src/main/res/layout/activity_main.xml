@@ -28,6 +28,26 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Skeleton overlay (always visible when person detected) -->
+    <com.virtualfittingroom.pose.SkeletonOverlayView
+        android:id="@+id/skeletonView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Debug log panel (bottom-left, above bottom bar) -->
+    <com.virtualfittingroom.ui.DebugLogView
+        android:id="@+id/debugLogView"
+        android:layout_width="260dp"
+        android:layout_height="120dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginBottom="8dp"
+        app:layout_constraintBottom_toTopOf="@+id/bottomPanelBg"
+        app:layout_constraintStart_toStartOf="parent" />
+
     <!-- Status text -->
     <TextView
         android:id="@+id/statusText"
