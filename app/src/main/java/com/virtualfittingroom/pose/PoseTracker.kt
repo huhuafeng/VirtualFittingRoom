@@ -293,6 +293,9 @@ class PoseTracker(private val context: Context) {
         )
         Imgproc.dilate(blurred, dilated, kernel)
 
+        // Convert single-channel mask to 4-channel for ARGB_8888 Bitmap
+        Imgproc.cvtColor(dilated, dilated, Imgproc.COLOR_GRAY2BGRA)
+
         val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
         Utils.matToBitmap(dilated, bitmap)
 

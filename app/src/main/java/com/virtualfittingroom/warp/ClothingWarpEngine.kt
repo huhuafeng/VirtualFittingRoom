@@ -196,6 +196,9 @@ class ClothingWarpEngine {
             // Feather alpha edges
             featherAlpha(dstMat, 7)
 
+            // Convert back to BGRA for Android Bitmap
+            Imgproc.cvtColor(dstMat, dstMat, Imgproc.COLOR_RGBA2BGRA)
+
             val result = Bitmap.createBitmap(fw, fh, Bitmap.Config.ARGB_8888)
             Utils.matToBitmap(dstMat, result)
 
@@ -283,8 +286,8 @@ class ClothingWarpEngine {
             for (ch in maskCh) ch.release()
             m
         } else {
-            // No segmentation mask — use clothing alpha as fallback
-            Mat.ones(clothingAlpha.size(), CvType.CV_32F)
+            // No segmentation mask — use 255 so normalize gives 1.0
+            Mat.ones(clothingAlpha.size(), CvType.CV_32F).setTo(Scalar(255.0))
         }
 
         // Arm mask: subtract arm regions so arms appear in front of clothing
