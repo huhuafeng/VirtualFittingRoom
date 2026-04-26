@@ -17,7 +17,7 @@ class DebugLogView @JvmOverloads constructor(
 ) : TextView(context, attrs, defStyleAttr) {
 
     private val lines = mutableListOf<String>()
-    private val maxLines = 8
+    private val maxLines = 20
 
     init {
         setBackgroundColor(Color.parseColor("#B3000000"))

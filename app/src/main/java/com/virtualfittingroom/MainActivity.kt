@@ -182,10 +182,14 @@ class MainActivity : AppCompatActivity() {
     private fun processFrame(imageProxy: ImageProxy) {
         val bitmap = imageProxyToBitmap(imageProxy) ?: return
 
+        // Rotate to portrait orientation based on sensor rotation
+        val rotation = imageProxy.imageInfo.rotationDegrees
+        val rotated = if (rotation != 0) rotateBitmap(bitmap, rotation) else bitmap
+
         val processed = if (cameraHelper.isFrontCamera()) {
-            flipHorizontal(bitmap)
+            flipHorizontal(rotated)
         } else {
-            bitmap
+            rotated
         }
 
         latestFrame.set(processed)
@@ -342,6 +346,11 @@ class MainActivity : AppCompatActivity() {
 
     private fun flipHorizontal(bitmap: Bitmap): Bitmap {
         val matrix = Matrix().apply { postScale(-1f, 1f, bitmap.width / 2f, bitmap.height / 2f) }
+        return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+    private fun rotateBitmap(bitmap: Bitmap, degrees: Int): Bitmap {
+        val matrix = Matrix().apply { postRotate(degrees.toFloat()) }
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
     }
 

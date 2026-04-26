@@ -41,8 +41,8 @@
     <!-- Debug log panel (bottom-left, above bottom bar) -->
     <com.virtualfittingroom.ui.DebugLogView
         android:id="@+id/debugLogView"
-        android:layout_width="260dp"
-        android:layout_height="120dp"
+        android:layout_width="360dp"
+        android:layout_height="220dp"
         android:layout_marginStart="8dp"
         android:layout_marginBottom="8dp"
         app:layout_constraintBottom_toTopOf="@+id/bottomPanelBg"

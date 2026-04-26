@@ -245,13 +245,28 @@ class ClothingWarpEngine {
         Imgproc.cvtColor(cameraMat, cameraMat, Imgproc.COLOR_BGRA2RGBA)
         Imgproc.cvtColor(clothingMat, clothingMat, Imgproc.COLOR_BGRA2RGBA)
 
-        // Split channels
+        // Split channels and convert to CV_32F for consistent arithmetic
+        val camChRaw = ArrayList<Mat>()
+        val clothChRaw = ArrayList<Mat>()
+        Core.split(cameraMat, camChRaw)
+        Core.split(clothingMat, clothChRaw)
+
         val camCh = ArrayList<Mat>()
         val clothCh = ArrayList<Mat>()
-        Core.split(cameraMat, camCh)
-        Core.split(clothingMat, clothCh)
+        for (ch in camChRaw) {
+            val f = Mat()
+            ch.convertTo(f, CvType.CV_32F)
+            camCh.add(f)
+            ch.release()
+        }
+        for (ch in clothChRaw) {
+            val f = Mat()
+            ch.convertTo(f, CvType.CV_32F)
+            clothCh.add(f)
+            ch.release()
+        }
 
-        val clothingAlpha = clothCh[3] // clothing alpha
+        val clothingAlpha = clothCh[3] // clothing alpha (CV_32F)
 
         // Person mask: from segmentation or fallback to clothing alpha
         val personMask = if (segmentationMask != null) {
@@ -261,22 +276,29 @@ class ClothingWarpEngine {
             Imgproc.cvtColor(maskMat, maskMat, Imgproc.COLOR_BGRA2RGBA)
             val maskCh = ArrayList<Mat>()
             Core.split(maskMat, maskCh)
-            val m = maskCh[3]
+            val m = Mat()
+            maskCh[3].convertTo(m, CvType.CV_32F)
             maskMat.release()
             if (maskResized !== segmentationMask) maskResized.recycle()
-            for (i in 0 until maskCh.size) { if (i != 3) maskCh[i].release() }
+            for (ch in maskCh) ch.release()
             m
         } else {
             // No segmentation mask — use clothing alpha as fallback
-            Mat.ones(clothingAlpha.size(), clothingAlpha.type())
+            Mat.ones(clothingAlpha.size(), CvType.CV_32F)
         }
 
         // Arm mask: subtract arm regions so arms appear in front of clothing
         val armMask = createArmMask(pose, w, h, clothingAlpha.size())
 
         // Effective alpha = clothing_alpha * person_mask * (1 - arm_mask)
+        // All inputs are CV_32F, normalize to 0~1 range using convertTo scale
+        val clothingAlphaN = Mat()
+        clothingAlpha.convertTo(clothingAlphaN, CvType.CV_32F, 1.0 / 255.0)
+        val personMaskN = Mat()
+        personMask.convertTo(personMaskN, CvType.CV_32F, 1.0 / 255.0)
+
         val effectiveAlpha = Mat()
-        Core.multiply(clothingAlpha, personMask, effectiveAlpha, 1.0 / 255.0)
+        Core.multiply(clothingAlphaN, personMaskN, effectiveAlpha)
 
         if (armMask != null) {
             val invArm = Mat()
@@ -287,6 +309,7 @@ class ClothingWarpEngine {
         }
 
         // Blend: result = camera * (1 - alpha) + clothing * alpha
+        // camCh and clothCh are CV_32F in 0~255 range, effectiveAlpha is CV_32F in 0~1
         val resultCh = ArrayList<Mat>()
         for (i in 0 until 3) {
             val blended = Mat()
@@ -295,8 +318,8 @@ class ClothingWarpEngine {
 
             val camC = Mat()
             val clothC = Mat()
-            Core.multiply(camCh[i], invAlpha, camC, 1.0 / 255.0)
-            Core.multiply(clothCh[i], effectiveAlpha, clothC, 1.0 / 255.0)
+            Core.multiply(camCh[i], invAlpha, camC)
+            Core.multiply(clothCh[i], effectiveAlpha, clothC)
 
             Core.add(camC, clothC, blended)
 
@@ -306,8 +329,8 @@ class ClothingWarpEngine {
             clothC.release()
         }
 
-        // Full alpha
-        resultCh.add(Mat.ones(effectiveAlpha.size(), CvType.CV_64F).setTo(Scalar(255.0)))
+        // Full alpha (255)
+        resultCh.add(Mat.ones(effectiveAlpha.size(), CvType.CV_32F).setTo(Scalar(255.0)))
 
         val resultMat = Mat()
         Core.merge(resultCh, resultMat)
@@ -324,10 +347,11 @@ class ClothingWarpEngine {
         cameraMat.release()
         clothingMat.release()
         effectiveAlpha.release()
+        clothingAlphaN.release()
+        personMaskN.release()
         clipped.release()
         resultMat.release()
         personMask.release()
-        clothingAlpha.release()
         for (ch in camCh) ch.release()
         for (ch in clothCh) ch.release()
         for (ch in resultCh) ch.release()
