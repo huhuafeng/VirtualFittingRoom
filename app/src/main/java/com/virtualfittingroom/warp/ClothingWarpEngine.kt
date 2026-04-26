@@ -31,8 +31,8 @@ class ClothingWarpEngine {
         // Start with camera frame
         var result = cameraFrame
 
-        // Process pants first (lower layer)
-        if (pantsItem != null && pantsItem.imageBitmap != null) {
+        // Process pants first (lower layer) — needs hips + ankles visible
+        if (pantsItem != null && pantsItem.imageBitmap != null && pose.pantsReady) {
             val warped = warpClothing(pantsItem, pose, w, h)
             if (warped != null) {
                 val blended = blend(result, warped, segmentationMask, pose, w, h)
@@ -42,8 +42,8 @@ class ClothingWarpEngine {
             }
         }
 
-        // Process top (upper layer)
-        if (topItem != null && topItem.imageBitmap != null) {
+        // Process top (upper layer) — needs shoulders + hips visible
+        if (topItem != null && topItem.imageBitmap != null && pose.topReady) {
             val warped = warpClothing(topItem, pose, w, h)
             if (warped != null) {
                 val blended = blend(result, warped, segmentationMask, pose, w, h)

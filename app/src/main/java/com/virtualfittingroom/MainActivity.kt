@@ -224,7 +224,7 @@ class MainActivity : AppCompatActivity() {
         val now = System.currentTimeMillis()
         if (now - lastLogTime > 250) {
             lastLogTime = now
-            logDebug()
+            logDebug(result.bodyPose.topReady, result.bodyPose.pantsReady)
         }
 
         if (topItem == null && pantsItem == null) return
@@ -258,7 +258,7 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun logDebug() {
+    private fun logDebug(topReady: Boolean = false, pantsReady: Boolean = false) {
         val top = selectedTop.get()
         val pants = selectedPants.get()
         val clothesInfo = buildString {
@@ -267,7 +267,9 @@ class MainActivity : AppCompatActivity() {
             if (pants != null) append(pants.name)
             if (top == null && pants == null) append("none")
         }
-        binding.debugLogView.log("FPS:$currentFps | Pose:OK | $clothesInfo")
+        val topFlag = if (topReady) "T:Y" else "T:N"
+        val pantsFlag = if (pantsReady) "P:Y" else "P:N"
+        binding.debugLogView.log("FPS:$currentFps | $topFlag $pantsFlag | $clothesInfo")
     }
 
     // === Photo Capture ===

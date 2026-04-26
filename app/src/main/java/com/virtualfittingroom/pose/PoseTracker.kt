@@ -61,7 +61,10 @@ class PoseTracker(private val context: Context) {
         val bodyTiltAngle: Float,
         val shoulderWidth: Float,
         val torsoHeight: Float,
-        val isFrontFacing: Boolean
+        val isFrontFacing: Boolean,
+        // Visibility — determines if clothing can be overlaid
+        val topReady: Boolean,    // shoulders + hips visible → can overlay top
+        val pantsReady: Boolean   // hips + ankles visible → can overlay pants
     )
 
     data class PoseResult(
@@ -71,6 +74,7 @@ class PoseTracker(private val context: Context) {
 
     private var poseLandmarker: PoseLandmarker? = null
     private var smoothedLandmarks: FloatArray? = null // flat: x0,y0,z0, x1,y1,z1, ...
+    private var latestVisibility: FloatArray? = null   // flat: v0, v1, ... (per landmark)
     private var missingFrameCount = 0
 
     /** Latest smoothed landmarks as flat array (x0,y0, x1,y1, ...) for skeleton overlay. */
@@ -143,6 +147,13 @@ class PoseTracker(private val context: Context) {
         // Adaptive smoothing
         val smoothed = smoothLandmarks(current)
 
+        // Extract visibility from raw landmarks
+        val vis = FloatArray(current.size)
+        for (i in current.indices) {
+            vis[i] = current[i].visibility()?.let { if (it > 0.5f) 1f else 0f } ?: 0f
+        }
+        latestVisibility = vis
+
         // Export XY for skeleton overlay (flat: x0,y0, x1,y1, ...)
         val xy = FloatArray(current.size * 2)
         for (i in current.indices) {
@@ -152,7 +163,7 @@ class PoseTracker(private val context: Context) {
         latestXY = xy
 
         // Map to BodyPose
-        val bodyPose = mapToBodyPose(smoothed) ?: return
+        val bodyPose = mapToBodyPose(smoothed, vis) ?: return
 
         // Process segmentation mask
         val mask = processSegmentationMask(result)
@@ -194,7 +205,7 @@ class PoseTracker(private val context: Context) {
         return flat
     }
 
-    private fun mapToBodyPose(flat: FloatArray): BodyPose? {
+    private fun mapToBodyPose(flat: FloatArray, vis: FloatArray): BodyPose? {
         if (flat.size < 33 * 3) return null
 
         fun pt(idx: Int): Point {
@@ -202,11 +213,23 @@ class PoseTracker(private val context: Context) {
             return Point(flat[i], flat[i + 1])
         }
 
+        fun visible(idx: Int): Boolean {
+            if (idx >= vis.size || vis[idx] < 0.5f) return false
+            val x = flat[idx * 3]
+            val y = flat[idx * 3 + 1]
+            return x in 0.02f..0.98f && y in 0.02f..0.98f
+        }
+
         val leftShoulder = pt(11)
         val rightShoulder = pt(12)
         val leftHip = pt(23)
         val rightHip = pt(24)
         val nose = pt(0)
+
+        // Visibility checks
+        val shoulderVisible = visible(11) && visible(12)
+        val hipVisible = visible(23) && visible(24)
+        val ankleVisible = visible(27) && visible(28)
 
         val shoulderMidpoint = Point(
             (leftShoulder.x + rightShoulder.x) / 2f,
@@ -247,7 +270,9 @@ class PoseTracker(private val context: Context) {
             bodyTiltAngle = tiltAngle,
             shoulderWidth = shoulderWidth,
             torsoHeight = torsoHeight,
-            isFrontFacing = isFrontFacing
+            isFrontFacing = isFrontFacing,
+            topReady = shoulderVisible && hipVisible,
+            pantsReady = hipVisible && ankleVisible
         )
     }
 
