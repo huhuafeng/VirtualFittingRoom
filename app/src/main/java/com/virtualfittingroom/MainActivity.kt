@@ -14,6 +14,7 @@ import androidx.camera.core.ImageProxy
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.tabs.TabLayout
+import com.google.mediapipe.framework.image.ByteBufferExtractor
 import com.google.mediapipe.tasks.vision.poselandmarker.PoseLandmarkerResult
 import com.virtualfittingroom.camera.CameraManager
 import com.virtualfittingroom.databinding.ActivityMainBinding
@@ -24,16 +25,21 @@ import com.virtualfittingroom.overlay.BlendProcessor
 import com.virtualfittingroom.overlay.ClothingWarpEngine
 import com.virtualfittingroom.pose.*
 import com.virtualfittingroom.ui.ClothingPanelAdapter
-import com.google.mediapipe.framework.image.ByteBufferExtractor
 import com.virtualfittingroom.util.PermissionHelper
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.util.concurrent.atomic.AtomicLong
 import java.util.concurrent.atomic.AtomicReference
 
 class MainActivity : AppCompatActivity() {
 
-    // Core components
+    companion object {
+        private const val TAG = "MainActivity"
+    }
+
     private lateinit var binding: ActivityMainBinding
     private lateinit var permissionHelper: PermissionHelper
     private lateinit var cameraManager: CameraManager
@@ -46,28 +52,26 @@ class MainActivity : AppCompatActivity() {
     private lateinit var assetLoader: ClothingAssetLoader
 
     // State
-    private val latestPose = AtomicReference<LandmarkMapper.BodyPose?>(null)
-    private val latestMask = AtomicReference<Bitmap?>(null)
-    private val latestFrame = AtomicReference<Bitmap?>(null)
+    private val latestFrame = AtomicReference<Bitmap>(null)
     private val selectedTop = AtomicReference<ClothingItem?>(null)
     private val selectedPants = AtomicReference<ClothingItem?>(null)
-    private val blendedResult = AtomicReference<Bitmap?>(null)
-    private var personDetected = false
+    private var lastBlendedBitmap: Bitmap? = null
     private var allClothingItems: List<ClothingItem> = emptyList()
     private lateinit var clothingAdapter: ClothingPanelAdapter
     private var currentTab = ClothingCategory.TOP
-
-    // Debug
     private var showDebug = false
-    private var frameCounter = 0L
-    private var lastProcessTime = 0L
+
+    // Frame counter for MediaPipe timestamps
+    private val frameCounter = AtomicLong(0)
+
+    // Single processing job — cancel previous before starting new
+    private var processingJob: Job? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Keep screen on while using the app
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         initComponents()
@@ -86,17 +90,28 @@ class MainActivity : AppCompatActivity() {
         blendProcessor = BlendProcessor()
         assetLoader = ClothingAssetLoader(this)
 
-        // Load clothing assets
         allClothingItems = assetLoader.loadAll()
     }
 
     private fun setupUI() {
-        // Clothing adapter
         clothingAdapter = ClothingPanelAdapter { item ->
-            if (currentTab == ClothingCategory.TOP) {
-                selectedTop.set(item)
+            if (item == null) {
+                // Deselected
+                if (currentTab == ClothingCategory.TOP) {
+                    selectedTop.set(null)
+                } else {
+                    selectedPants.set(null)
+                }
             } else {
-                selectedPants.set(item)
+                if (currentTab == ClothingCategory.TOP) {
+                    selectedTop.set(item)
+                } else {
+                    selectedPants.set(item)
+                }
+            }
+            // Hide result view when no clothing selected
+            if (selectedTop.get() == null && selectedPants.get() == null) {
+                binding.resultView.visibility = View.GONE
             }
         }
         binding.recyclerClothing.apply {
@@ -104,7 +119,6 @@ class MainActivity : AppCompatActivity() {
             adapter = clothingAdapter
         }
 
-        // Tab layout
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.tab_tops))
         binding.tabLayout.addTab(binding.tabLayout.newTab().setText(R.string.tab_pants))
         binding.tabLayout.addOnTabSelectedListener(object : TabLayout.OnTabSelectedListener {
@@ -116,20 +130,16 @@ class MainActivity : AppCompatActivity() {
             override fun onTabReselected(tab: TabLayout.Tab?) {}
         })
 
-        // Show tops initially
         updateClothingList()
 
-        // Camera switch
         binding.btnSwitchCamera.setOnClickListener {
             cameraManager.switchCamera(binding.previewView)
         }
 
-        // Capture photo
         binding.btnCapture.setOnClickListener {
             capturePhoto()
         }
 
-        // Debug toggle (long press on status text)
         binding.statusText.setOnLongClickListener {
             showDebug = !showDebug
             binding.poseOverlayView.setShowDebug(showDebug)
@@ -141,16 +151,6 @@ class MainActivity : AppCompatActivity() {
     private fun updateClothingList() {
         val items = allClothingItems.filter { it.category == currentTab }
         clothingAdapter.updateItems(items)
-
-        // Restore selection
-        val selectedId = if (currentTab == ClothingCategory.TOP) {
-            selectedTop.get()?.id
-        } else {
-            selectedPants.get()?.id
-        }
-        if (selectedId != null) {
-            clothingAdapter.updateItems(items) // resets selection
-        }
     }
 
     private fun requestCameraPermission() {
@@ -170,7 +170,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         poseDetector.onPoseResult = { result, timestamp ->
-            handlePoseResult(result, timestamp)
+            handlePoseResult(result)
         }
     }
 
@@ -183,14 +183,7 @@ class MainActivity : AppCompatActivity() {
 
     // === Frame Processing Pipeline ===
 
-    // === Frame Processing Pipeline ===
-
     private fun processFrame(imageProxy: ImageProxy) {
-        // Throttle to ~12fps to reduce CPU load
-        val now = System.currentTimeMillis()
-        if (now - lastProcessTime < 80L) return
-        lastProcessTime = now
-
         val bitmap = imageProxyToBitmap(imageProxy) ?: return
 
         val processedBitmap = if (cameraManager.isFrontCamera()) {
@@ -200,112 +193,121 @@ class MainActivity : AppCompatActivity() {
         }
 
         latestFrame.set(processedBitmap)
-        frameCounter++
-        poseDetector.detectAsync(processedBitmap, frameCounter)
+        val timestamp = frameCounter.incrementAndGet()
+        poseDetector.detectAsync(processedBitmap, timestamp)
     }
 
-    private fun handlePoseResult(result: PoseLandmarkerResult, timestampMs: Long) {
-        // Smooth landmarks
+    private fun handlePoseResult(result: PoseLandmarkerResult) {
+        // 1. Smooth landmarks
         landmarkSmoother.smooth(result)
         val smoothedLandmarks = landmarkSmoother.getSmoothedLandmarks()
 
-        // Map landmarks
-        if (smoothedLandmarks != null && smoothedLandmarks.isNotEmpty()) {
-            val pose = landmarkMapper.mapLandmarks(smoothedLandmarks)
-            latestPose.set(pose)
-            personDetected = true
+        // 2. Map to BodyPose
+        val pose = if (smoothedLandmarks != null && smoothedLandmarks.isNotEmpty()) {
+            landmarkMapper.mapLandmarks(smoothedLandmarks)
+        } else null
 
-            runOnUiThread {
-                binding.poseOverlayView.updatePose(smoothedLandmarks)
-                binding.statusText.visibility = View.GONE
+        val personDetected = pose != null
+
+        // 3. Process segmentation mask
+        var processedMask: Bitmap? = null
+        val masksOpt = result.segmentationMasks()
+        if (masksOpt.isPresent && personDetected) {
+            try {
+                val maskList = masksOpt.get()
+                val maskBuffer = ByteBufferExtractor.extract(maskList[0]).asFloatBuffer()
+                processedMask = maskProcessor.processMask(maskBuffer, maskList[0].width, maskList[0].height)
+            } catch (e: Exception) {
+                Log.w(TAG, "Mask processing error", e)
             }
-        } else {
-            personDetected = false
-            latestPose.set(null)
-            runOnUiThread {
+        }
+
+        // 4. Update debug overlay on UI thread
+        runOnUiThread {
+            if (personDetected) {
+                binding.poseOverlayView.updatePose(smoothedLandmarks)
+                if (processedMask != null) {
+                    binding.poseOverlayView.updateSegmentationMask(processedMask)
+                }
+                binding.statusText.visibility = View.GONE
+            } else {
+                binding.poseOverlayView.updatePose(null)
                 binding.statusText.visibility = View.VISIBLE
             }
         }
 
-        // Process segmentation mask
-        val masksOpt = result.segmentationMasks()
-        if (masksOpt.isPresent) {
-            try {
-                val maskList = masksOpt.get()
-                val maskBuffer = ByteBufferExtractor.extract(maskList[0]).asFloatBuffer()
-                val maskWidth = maskList[0].width
-                val maskHeight = maskList[0].height
-                val processedMask = maskProcessor.processMask(maskBuffer, maskWidth, maskHeight)
-                latestMask.set(processedMask)
-
-                runOnUiThread {
-                    binding.poseOverlayView.updateSegmentationMask(processedMask)
-                }
-            } catch (e: Exception) {
-                Log.w("MainActivity", "Mask processing error", e)
-            }
-        }
-
-        // Warp and blend clothing
-        processClothingOverlay()
-    }
-
-    private fun processClothingOverlay() {
-        val pose = latestPose.get() ?: return
-        val frame = latestFrame.get() ?: return
-        if (!personDetected) return
-
+        // 5. Check if clothing overlay is needed
         val topItem = selectedTop.get()
         val pantsItem = selectedPants.get()
+        if (!personDetected || (topItem == null && pantsItem == null) || processedMask == null) {
+            return
+        }
 
-        if (topItem == null && pantsItem == null) return
+        val frame = latestFrame.get() ?: return
 
-        lifecycleScope.launch(Dispatchers.Default) {
+        // 6. Cancel previous processing, start new
+        processingJob?.cancel()
+        processingJob = lifecycleScope.launch(Dispatchers.Default) {
             try {
-                val frameWidth = frame.width
-                val frameHeight = frame.height
-                var resultBitmap: Bitmap = frame
-
-                // Process top clothing
-                if (topItem != null && topItem.imageBitmap != null) {
-                    val warpedTop = warpEngine.warpClothing(topItem, pose, frameWidth, frameHeight)
-                    if (warpedTop != null) {
-                        val feathered = warpEngine.featherEdges(warpedTop, 5)
-                        val mask = latestMask.get()
-                        if (mask != null) {
-                            resultBitmap = blendProcessor.blend(resultBitmap, feathered, mask, pose)
-                        }
-                        if (feathered !== warpedTop) feathered.recycle()
-                        warpedTop.recycle()
-                    }
+                val resultBitmap = blendClothing(frame, pose!!, processedMask, topItem, pantsItem)
+                withContext(Dispatchers.Main) {
+                    lastBlendedBitmap?.recycle()
+                    lastBlendedBitmap = resultBitmap
+                    binding.resultView.setImageBitmap(resultBitmap)
+                    binding.resultView.visibility = View.VISIBLE
                 }
-
-                // Process pants
-                if (pantsItem != null && pantsItem.imageBitmap != null) {
-                    val warpedPants = warpEngine.warpClothing(pantsItem, pose, frameWidth, frameHeight)
-                    if (warpedPants != null) {
-                        val feathered = warpEngine.featherEdges(warpedPants, 5)
-                        val mask = latestMask.get()
-                        if (mask != null) {
-                            resultBitmap = blendProcessor.blend(resultBitmap, feathered, mask, pose)
-                        }
-                        if (feathered !== warpedPants) feathered.recycle()
-                        warpedPants.recycle()
-                    }
-                }
-
-                blendedResult.set(resultBitmap)
+            } catch (e: CancellationException) {
+                // Normal — previous job cancelled by new frame
             } catch (e: Exception) {
-                Log.e("MainActivity", "Clothing overlay error", e)
+                Log.e(TAG, "Clothing overlay error", e)
             }
         }
+    }
+
+    private fun blendClothing(
+        frame: Bitmap,
+        pose: LandmarkMapper.BodyPose,
+        mask: Bitmap,
+        topItem: ClothingItem?,
+        pantsItem: ClothingItem?
+    ): Bitmap {
+        val frameWidth = frame.width
+        val frameHeight = frame.height
+        var resultBitmap: Bitmap = frame
+
+        // Process pants first (lower layer)
+        if (pantsItem != null && pantsItem.imageBitmap != null) {
+            val warped = warpEngine.warpClothing(pantsItem, pose, frameWidth, frameHeight)
+            if (warped != null) {
+                val feathered = warpEngine.featherEdges(warped, 5)
+                val blended = blendProcessor.blend(resultBitmap, feathered, mask, pose)
+                if (resultBitmap !== frame) resultBitmap.recycle()
+                resultBitmap = blended
+                if (feathered !== warped) feathered.recycle()
+                warped.recycle()
+            }
+        }
+
+        // Process top (upper layer)
+        if (topItem != null && topItem.imageBitmap != null) {
+            val warped = warpEngine.warpClothing(topItem, pose, frameWidth, frameHeight)
+            if (warped != null) {
+                val feathered = warpEngine.featherEdges(warped, 5)
+                val blended = blendProcessor.blend(resultBitmap, feathered, mask, pose)
+                if (resultBitmap !== frame) resultBitmap.recycle()
+                resultBitmap = blended
+                if (feathered !== warped) feathered.recycle()
+                warped.recycle()
+            }
+        }
+
+        return resultBitmap
     }
 
     // === Photo Capture ===
 
     private fun capturePhoto() {
-        val bitmap = blendedResult.get() ?: latestFrame.get() ?: return
-
+        val bitmap = lastBlendedBitmap ?: return
         lifecycleScope.launch(Dispatchers.IO) {
             saveToGallery(bitmap)
         }
@@ -340,7 +342,7 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         } catch (e: Exception) {
-            Log.e("MainActivity", "Failed to save photo", e)
+            Log.e(TAG, "Failed to save photo", e)
             withContext(Dispatchers.Main) {
                 Toast.makeText(this@MainActivity, "保存失败", Toast.LENGTH_SHORT).show()
             }
@@ -381,7 +383,7 @@ class MainActivity : AppCompatActivity() {
 
             bitmap
         } catch (e: Exception) {
-            Log.e("MainActivity", "Failed to convert ImageProxy to Bitmap", e)
+            Log.e(TAG, "Failed to convert ImageProxy to Bitmap", e)
             null
         }
     }
@@ -395,9 +397,11 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
+        processingJob?.cancel()
         poseDetector.release()
         maskProcessor.release()
         cameraManager.release()
         landmarkSmoother.reset()
+        lastBlendedBitmap?.recycle()
     }
 }

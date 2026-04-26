@@ -16,7 +16,19 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Pose Debug Overlay (on top of camera) -->
+    <!-- Result overlay (blended camera + clothing) -->
+    <ImageView
+        android:id="@+id/resultView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitCenter"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- Pose Debug Overlay (on top of result) -->
     <com.virtualfittingroom.pose.PoseOverlayView
         android:id="@+id/poseOverlayView"
         android:layout_width="match_parent"
