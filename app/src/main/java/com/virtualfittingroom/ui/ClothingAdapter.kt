@@ -1,6 +1,5 @@
 package com.virtualfittingroom.ui
 
-import android.graphics.Bitmap
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -10,10 +9,10 @@ import androidx.recyclerview.widget.RecyclerView
 import com.virtualfittingroom.R
 import com.virtualfittingroom.model.ClothingItem
 
-class ClothingPanelAdapter(
+class ClothingAdapter(
     private var items: List<ClothingItem> = emptyList(),
     private val onItemSelected: (ClothingItem?) -> Unit
-) : RecyclerView.Adapter<ClothingPanelAdapter.ViewHolder>() {
+) : RecyclerView.Adapter<ClothingAdapter.ViewHolder>() {
 
     private var selectedId: String? = null
 
@@ -32,14 +31,11 @@ class ClothingPanelAdapter(
         val item = items[position]
 
         holder.tvName.text = item.name
-        item.thumbnailBitmap?.let {
-            holder.imgClothing.setImageBitmap(it)
-        }
+        item.thumbnailBitmap?.let { holder.imgClothing.setImageBitmap(it) }
 
         holder.itemView.isSelected = (item.id == selectedId)
         holder.itemView.setOnClickListener {
             if (selectedId == item.id) {
-                // Deselect
                 selectedId = null
                 onItemSelected(null)
             } else {
@@ -57,6 +53,4 @@ class ClothingPanelAdapter(
         selectedId = null
         notifyDataSetChanged()
     }
-
-    fun getSelectedId() = selectedId
 }

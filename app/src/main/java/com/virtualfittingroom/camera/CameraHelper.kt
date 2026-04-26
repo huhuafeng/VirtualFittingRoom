@@ -2,6 +2,7 @@ package com.virtualfittingroom.camera
 
 import android.content.Context
 import android.util.Log
+import android.util.Size
 import androidx.camera.core.*
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
@@ -10,82 +11,74 @@ import androidx.lifecycle.LifecycleOwner
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
-class CameraManager(
+class CameraHelper(
     private val context: Context,
     private val lifecycleOwner: LifecycleOwner
 ) {
+    companion object {
+        private const val TAG = "CameraHelper"
+    }
+
     private var cameraProvider: ProcessCameraProvider? = null
-    private var preview: Preview? = null
-    private var imageAnalyzer: ImageAnalysis? = null
     private var camera: Camera? = null
     private var cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA
+    private var previewView: PreviewView? = null
 
     val analysisExecutor: ExecutorService = Executors.newSingleThreadExecutor()
 
     var onFrameAvailable: ((imageProxy: ImageProxy) -> Unit)? = null
 
-    fun initCamera(previewView: PreviewView) {
+    fun start(previewView: PreviewView) {
+        this.previewView = previewView
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
-
         cameraProviderFuture.addListener({
             cameraProvider = cameraProviderFuture.get()
-            bindCameraUseCases(previewView)
+            bindUseCases()
         }, ContextCompat.getMainExecutor(context))
     }
 
-    private fun bindCameraUseCases(previewView: PreviewView) {
+    private fun bindUseCases() {
         val provider = cameraProvider ?: return
-
-        // Unbind previous use cases
+        val pv = previewView ?: return
         provider.unbindAll()
 
         // Preview
-        preview = Preview.Builder()
-            .setTargetResolution(android.util.Size(1280, 720))
+        val preview = Preview.Builder()
+            .setTargetResolution(Size(1280, 720))
             .build()
-            .also {
-                it.setSurfaceProvider(previewView.surfaceProvider)
-            }
+            .also { it.setSurfaceProvider(pv.surfaceProvider) }
 
-        // ImageAnalysis
-        imageAnalyzer = ImageAnalysis.Builder()
-            .setTargetResolution(android.util.Size(640, 480))
-            .setTargetRotation(previewView.display.rotation)
+        // Image analysis
+        val imageAnalysis = ImageAnalysis.Builder()
+            .setTargetResolution(Size(640, 480))
+            .setTargetRotation(pv.display.rotation)
             .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
             .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
             .build()
-            .also {
-                it.setAnalyzer(analysisExecutor) { imageProxy ->
+            .also { analyzer ->
+                analyzer.setAnalyzer(analysisExecutor) { imageProxy ->
                     onFrameAvailable?.invoke(imageProxy)
                     imageProxy.close()
                 }
             }
 
-        // Bind to lifecycle
         try {
-            camera = provider.bindToLifecycle(
-                lifecycleOwner,
-                cameraSelector,
-                preview,
-                imageAnalyzer
-            )
+            camera = provider.bindToLifecycle(lifecycleOwner, cameraSelector, preview, imageAnalysis)
         } catch (e: Exception) {
-            Log.e("CameraManager", "Failed to bind camera use cases", e)
+            Log.e(TAG, "Failed to bind camera use cases", e)
         }
     }
 
-    fun switchCamera(previewView: PreviewView) {
+    fun switchCamera() {
         cameraSelector = if (cameraSelector == CameraSelector.DEFAULT_BACK_CAMERA) {
             CameraSelector.DEFAULT_FRONT_CAMERA
         } else {
             CameraSelector.DEFAULT_BACK_CAMERA
         }
-        bindCameraUseCases(previewView)
+        bindUseCases()
     }
 
-    fun isFrontCamera(): Boolean {
-        return cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA
-    }
+    fun isFrontCamera(): Boolean = cameraSelector == CameraSelector.DEFAULT_FRONT_CAMERA
 
     fun release() {
         cameraProvider?.unbindAll()

@@ -28,16 +28,6 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- Pose Debug Overlay (on top of result) -->
-    <com.virtualfittingroom.pose.PoseOverlayView
-        android:id="@+id/poseOverlayView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintEnd_toEndOf="parent" />
-
     <!-- Status text -->
     <TextView
         android:id="@+id/statusText"
@@ -58,8 +48,8 @@
     <!-- Capture button (top left) -->
     <ImageButton
         android:id="@+id/btnCapture"
-        android:layout_width="@dimen/control_button_size"
-        android:layout_height="@dimen/control_button_size"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_marginStart="16dp"
         android:layout_marginTop="16dp"
         android:background="@drawable/bg_circle_button"
@@ -73,8 +63,8 @@
     <!-- Switch camera button (top right) -->
     <ImageButton
         android:id="@+id/btnSwitchCamera"
-        android:layout_width="@dimen/control_button_size"
-        android:layout_height="@dimen/control_button_size"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
         android:layout_marginEnd="16dp"
         android:layout_marginTop="16dp"
         android:background="@drawable/bg_circle_button"
@@ -89,8 +79,8 @@
     <View
         android:id="@+id/bottomPanelBg"
         android:layout_width="match_parent"
-        android:layout_height="@dimen/clothing_panel_height"
-        android:background="@color/transparent_black"
+        android:layout_height="140dp"
+        android:background="#B3000000"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
