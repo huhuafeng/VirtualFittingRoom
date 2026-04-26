@@ -19,12 +19,28 @@ class DebugLogView @JvmOverloads constructor(
     private val lines = mutableListOf<String>()
     private val maxLines = 20
 
+    private var expanded = false
+    private val collapsedHeightPx: Int
+    private val expandedHeightPx: Int
+
     init {
         setBackgroundColor(Color.parseColor("#B3000000"))
         setTextColor(Color.parseColor("#00FF00"))
         textSize = 10f
         typeface = Typeface.MONOSPACE
         setPadding(8, 6, 8, 6)
+
+        val density = resources.displayMetrics.density
+        collapsedHeightPx = (180 * density).toInt()
+        expandedHeightPx = (resources.displayMetrics.heightPixels * 0.6).toInt()
+    }
+
+    /** Toggle between expanded and collapsed state. */
+    fun toggle() {
+        expanded = !expanded
+        val params = layoutParams ?: return
+        params.height = if (expanded) expandedHeightPx else collapsedHeightPx
+        layoutParams = params
     }
 
     /** Append a log line. Thread-safe via post. */

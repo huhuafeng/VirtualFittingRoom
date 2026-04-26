@@ -364,7 +364,7 @@ class ClothingWarpEngine {
      */
     private fun createArmMask(pose: PoseTracker.BodyPose, w: Int, h: Int, targetSize: Size): Mat? {
         return try {
-            val armMask = Mat.zeros(h, w, CvType.CV_64F)
+            val armMask = Mat.zeros(h, w, CvType.CV_32F)
 
             val armThickness = max(10, (pose.shoulderWidth * w * 0.1).toInt())
             val jointRadius = max(8, (pose.shoulderWidth * w * 0.06).toInt())

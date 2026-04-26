@@ -42,10 +42,25 @@
     <com.virtualfittingroom.ui.DebugLogView
         android:id="@+id/debugLogView"
         android:layout_width="360dp"
-        android:layout_height="220dp"
+        android:layout_height="180dp"
         android:layout_marginStart="8dp"
-        android:layout_marginBottom="8dp"
+        android:layout_marginBottom="4dp"
         app:layout_constraintBottom_toTopOf="@+id/bottomPanelBg"
+        app:layout_constraintStart_toStartOf="parent" />
+
+    <!-- Debug toggle button -->
+    <ImageButton
+        android:id="@+id/btnToggleDebug"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:layout_marginStart="8dp"
+        android:layout_marginBottom="4dp"
+        android:background="@drawable/bg_circle_button"
+        android:src="@android:drawable/ic_menu_info_details"
+        android:contentDescription="Toggle debug"
+        android:scaleType="centerInside"
+        android:padding="6dp"
+        app:layout_constraintBottom_toTopOf="@+id/debugLogView"
         app:layout_constraintStart_toStartOf="parent" />
 
     <!-- Status text -->

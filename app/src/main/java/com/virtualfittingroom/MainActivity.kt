@@ -136,6 +136,10 @@ class MainActivity : AppCompatActivity() {
         binding.btnCapture.setOnClickListener {
             capturePhoto()
         }
+
+        binding.btnToggleDebug.setOnClickListener {
+            binding.debugLogView.toggle()
+        }
     }
 
     private fun updateClothingList() {
