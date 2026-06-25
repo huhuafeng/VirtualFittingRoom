@@ -85,7 +85,6 @@ class MainActivity : AppCompatActivity() {
 
         // GPU renderer
         gpuRenderer = GpuClothingRenderer(this)
-        binding.glOverlay.setEGLConfigChooser(8, 8, 8, 8, 16, 0)
         binding.glOverlay.setRenderer(gpuRenderer)
         binding.glOverlay.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
 

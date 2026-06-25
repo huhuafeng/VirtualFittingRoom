@@ -26,21 +26,23 @@ class GpuClothingRenderer(
     companion object {
         private const val GRID = 24
         private const val FS = 4
-        private val VERT = """
+        private val VERT_TEX = """
             uniform mat4 uProj;
             attribute vec4 aPos;
             attribute vec2 aUv;
             varying vec2 vUv;
-            void main() {
-                gl_Position = uProj * aPos;
-                vUv = aUv;
-            }
+            void main() { gl_Position = uProj * aPos; vUv = aUv; }
         """.trimIndent()
-        private val FRAG = """
+        private val FRAG_TEX = """
             precision mediump float;
             varying vec2 vUv;
             uniform sampler2D uTex;
             void main() { gl_FragColor = texture2D(uTex, vUv); }
+        """.trimIndent()
+        private val VERT_LINE = """
+            uniform mat4 uProj;
+            attribute vec4 aPos;
+            void main() { gl_Position = uProj * aPos; }
         """.trimIndent()
         private val FRAG_LINE = """
             precision mediump float;
@@ -92,8 +94,8 @@ class GpuClothingRenderer(
         GLES20.glEnable(GLES20.GL_BLEND)
         GLES20.glBlendFunc(GLES20.GL_SRC_ALPHA, GLES20.GL_ONE_MINUS_SRC_ALPHA)
         GLES20.glDisable(GLES20.GL_DEPTH_TEST)
-        texProgram = buildProgram(VERT, FRAG)
-        lineProgram = buildProgram(VERT, FRAG_LINE)
+        texProgram = buildProgram(VERT_TEX, FRAG_TEX)
+        lineProgram = buildProgram(VERT_LINE, FRAG_LINE)
         aPosLoc = GLES20.glGetAttribLocation(texProgram, "aPos")
         aUvLoc = GLES20.glGetAttribLocation(texProgram, "aUv")
         uProjLoc = GLES20.glGetUniformLocation(texProgram, "uProj")
@@ -132,6 +134,7 @@ class GpuClothingRenderer(
     // ── Clothing ──
 
     private fun drawClothing(top: ClothingItem?, pants: ClothingItem?, bp: PoseTracker.BodyPose, fw: Int, fh: Int) {
+        if (texProgram == 0) return
         GLES20.glUseProgram(texProgram)
         GLES20.glUniformMatrix4fv(uProjLoc, 1, false, projMat, 0)
         GLES20.glUniform1i(uTexLoc, 0)
@@ -278,6 +281,7 @@ class GpuClothingRenderer(
     )
 
     private fun drawSkeleton(lm: FloatArray, fw: Int, fh: Int, mir: Boolean) {
+        if (lineProgram == 0) return
         val scale = maxOf(viewW / fw, viewH / fh)
         val dispW = fw * scale; val dispH = fh * scale
         val ox = (viewW - dispW) / 2f; val oy = (viewH - dispH) / 2f
@@ -332,12 +336,27 @@ class GpuClothingRenderer(
 
     private fun buildProgram(vSrc: String, fSrc: String): Int {
         val vs = GLES20.glCreateShader(GLES20.GL_VERTEX_SHADER)
-        GLES20.glShaderSource(vs, vSrc); GLES20.glCompileShader(vs)
+        if (vs == 0) return 0
+        GLES20.glShaderSource(vs, vSrc)
+        GLES20.glCompileShader(vs)
+        val compiled = IntArray(1)
+        GLES20.glGetShaderiv(vs, GLES20.GL_COMPILE_STATUS, compiled, 0)
+        if (compiled[0] == 0) { GLES20.glDeleteShader(vs); return 0 }
+
         val fs = GLES20.glCreateShader(GLES20.GL_FRAGMENT_SHADER)
-        GLES20.glShaderSource(fs, fSrc); GLES20.glCompileShader(fs)
+        if (fs == 0) return 0
+        GLES20.glShaderSource(fs, fSrc)
+        GLES20.glCompileShader(fs)
+        GLES20.glGetShaderiv(fs, GLES20.GL_COMPILE_STATUS, compiled, 0)
+        if (compiled[0] == 0) { GLES20.glDeleteShader(fs); return 0 }
+
         val prog = GLES20.glCreateProgram()
-        GLES20.glAttachShader(prog, vs); GLES20.glAttachShader(prog, fs)
+        GLES20.glAttachShader(prog, vs)
+        GLES20.glAttachShader(prog, fs)
         GLES20.glLinkProgram(prog)
+        val linked = IntArray(1)
+        GLES20.glGetProgramiv(prog, GLES20.GL_LINK_STATUS, linked, 0)
+        if (linked[0] == 0) { GLES20.glDeleteProgram(prog); return 0 }
         return prog
     }
 }
