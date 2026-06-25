@@ -83,8 +83,9 @@ class MainActivity : AppCompatActivity() {
 
         allClothingItems = clothingLoader.loadAll()
 
-        // GPU renderer
+        // GPU renderer — must request GLES 2.0 explicitly
         gpuRenderer = GpuClothingRenderer(this)
+        binding.glOverlay.setEGLContextClientVersion(2)
         binding.glOverlay.setRenderer(gpuRenderer)
         binding.glOverlay.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
 
