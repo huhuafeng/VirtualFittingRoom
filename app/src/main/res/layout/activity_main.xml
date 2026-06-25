@@ -16,14 +16,13 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
-    <!-- GPU clothing overlay (transparent, renders warped clothing) -->
-    <android.opengl.GLSurfaceView
-        android:id="@+id/glOverlay"
+    <!-- Result overlay (blended camera + clothing, shown when item selected) -->
+    <ImageView
+        android:id="@+id/resultView"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="visible"
-        android:clickable="false"
-        android:focusable="false"
+        android:scaleType="centerCrop"
+        android:visibility="gone"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
