@@ -89,9 +89,9 @@ class MainActivity : AppCompatActivity() {
         binding.glOverlay.setRenderer(gpuRenderer)
         binding.glOverlay.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
 
-        // Preload clothing textures
+        // Preload clothing textures on GL thread
         for (item in allClothingItems) {
-            gpuRenderer.loadTexture(item)
+            binding.glOverlay.queueEvent { gpuRenderer.loadTexture(item) }
         }
 
         binding.debugLogView.log("App started")
