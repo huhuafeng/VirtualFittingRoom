@@ -304,19 +304,23 @@ class GpuClothingRenderer(
             GLES20.glDrawArrays(GLES20.GL_LINES, 0, lineVerts.size / 2)
         }
 
-        // Points
+        // Points (drawn as small squares using GL_TRIANGLE_STRIP)
         GLES20.glUniform4f(lineColorLoc, 1f, 0f, 0f, 1f)
-        GLES20.glPointSize(8f)
+        val ptSize = 6f
         val ptVerts = mutableListOf<Float>()
         for (i in 0 until minOf(lm.size / 2, 33)) {
-            val x = vx(lm[i * 2]); val y = vy(lm[i * 2 + 1])
-            if (x > 0) { ptVerts.add(x); ptVerts.add(y) }
+            val cx = vx(lm[i * 2]); val cy = vy(lm[i * 2 + 1])
+            if (cx <= 0) continue
+            ptVerts.addAll(listOf(
+                cx - ptSize, cy - ptSize, cx + ptSize, cy - ptSize,
+                cx - ptSize, cy + ptSize, cx + ptSize, cy + ptSize
+            ))
         }
         if (ptVerts.isNotEmpty()) {
             val buf = floatArrayToBuf(ptVerts.toFloatArray())
             GLES20.glVertexAttribPointer(linePosLoc, 2, GLES20.GL_FLOAT, false, 0, buf)
             GLES20.glEnableVertexAttribArray(linePosLoc)
-            GLES20.glDrawArrays(GLES20.GL_POINTS, 0, ptVerts.size / 2)
+            GLES20.glDrawArrays(GLES20.GL_TRIANGLE_STRIP, 0, ptVerts.size / 2)
         }
     }
 
