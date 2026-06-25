@@ -114,6 +114,10 @@ class GpuClothingRenderer(
 
     override fun onDrawFrame(gl: GL10?) {
         GLES20.glClear(GLES20.GL_COLOR_BUFFER_BIT)
+
+        // Debug: draw a visible red rectangle to confirm GL rendering works
+        drawDebugRect()
+
         val lm = landmarks
         val t = topItem
         val p = pantsItem
@@ -124,11 +128,29 @@ class GpuClothingRenderer(
         if (fw == 0 || fh == 0) return
 
         if (bp != null && (t != null || p != null)) {
+            android.util.Log.d("GpuClothing", "drawClothing topReady=${bp.topReady} pantsReady=${bp.pantsReady} " +
+                "topTex=${t?.id?.let { clothingTex.containsKey(it) }} " +
+                "pantsTex=${p?.id?.let { clothingTex.containsKey(it) }}")
             drawClothing(t, p, bp, fw, fh)
         }
         if (lm != null && lm.size >= 33 * 2) {
             drawSkeleton(lm, fw, fh, mir)
         }
+    }
+
+    private fun drawDebugRect() {
+        GLES20.glUseProgram(lineProgram)
+        GLES20.glUniformMatrix4fv(lineProjLoc, 1, false, projMat, 0)
+        GLES20.glUniform4f(lineColorLoc, 1f, 0f, 0f, 1f)
+        val buf = floatArrayToBuf(floatArrayOf(
+            100f, 100f, 400f, 100f,
+            400f, 100f, 400f, 400f,
+            400f, 400f, 100f, 400f,
+            100f, 400f, 100f, 100f
+        ))
+        GLES20.glVertexAttribPointer(linePosLoc, 2, GLES20.GL_FLOAT, false, 0, buf)
+        GLES20.glEnableVertexAttribArray(linePosLoc)
+        GLES20.glDrawArrays(GLES20.GL_LINES, 0, 8)
     }
 
     // ── Clothing ──
