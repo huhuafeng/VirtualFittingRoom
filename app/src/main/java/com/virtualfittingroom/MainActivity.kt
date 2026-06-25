@@ -65,8 +65,9 @@ class MainActivity : AppCompatActivity() {
     private var fpsLastTime = System.currentTimeMillis()
     private var currentFps = 0
 
-    // Debug log throttling
+    // Throttling
     private var lastLogTime = 0L
+    private var lastBlendMs = 0L
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -230,6 +231,11 @@ class MainActivity : AppCompatActivity() {
         }
 
         if (topItem == null && pantsItem == null) return
+
+        // Throttle blend to 200ms (max 5 FPS for blend, skeleton still updates every frame)
+        val nowMs = System.currentTimeMillis()
+        if (nowMs - lastBlendMs < 200) return
+        lastBlendMs = nowMs
 
         // Cancel previous blend, start new one
         processingJob?.cancel()

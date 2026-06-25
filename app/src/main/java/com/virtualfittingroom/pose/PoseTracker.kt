@@ -30,7 +30,7 @@ class PoseTracker(private val context: Context) {
 
     companion object {
         private const val TAG = "PoseTracker"
-        private const val MODEL_PATH = "models/pose_landmarker_full.task"
+        private const val MODEL_PATH = "models/pose_landmarker_lite.task"
         private const val SMOOTH_ALPHA = 0.35f
         private const val MAX_MISSING_FRAMES = 5
     }

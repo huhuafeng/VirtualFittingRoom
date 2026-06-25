@@ -29,8 +29,8 @@ jobs:
       - name: Download pose detection model
         run: |
           mkdir -p app/src/main/assets/models
-          curl -L -o app/src/main/assets/models/pose_landmarker_full.task \
-            "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task"
+          curl -L -o app/src/main/assets/models/pose_landmarker_lite.task \
+            "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task"
 
       - name: Build Debug APK
         run: gradle assembleDebug
