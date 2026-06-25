@@ -3,6 +3,7 @@ package com.virtualfittingroom
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.opengl.GLSurfaceView
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -20,12 +21,10 @@ import com.virtualfittingroom.model.ClothingCategory
 import com.virtualfittingroom.model.ClothingItem
 import com.virtualfittingroom.model.ClothingLoader
 import com.virtualfittingroom.pose.PoseTracker
+import com.virtualfittingroom.render.GpuClothingRenderer
 import com.virtualfittingroom.ui.ClothingAdapter
 import com.virtualfittingroom.util.PermissionHelper
-import com.virtualfittingroom.warp.ClothingWarpEngine
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.util.concurrent.atomic.AtomicLong
@@ -42,23 +41,19 @@ class MainActivity : AppCompatActivity() {
     private lateinit var permissionHelper: PermissionHelper
     private lateinit var cameraHelper: CameraHelper
     private lateinit var poseTracker: PoseTracker
-    private lateinit var warpEngine: ClothingWarpEngine
     private lateinit var clothingLoader: ClothingLoader
+    private lateinit var gpuRenderer: GpuClothingRenderer
 
     // State
     private val latestFrame = AtomicReference<Bitmap>(null)
     private val selectedTop = AtomicReference<ClothingItem?>(null)
     private val selectedPants = AtomicReference<ClothingItem?>(null)
-    private var lastBlendedBitmap: Bitmap? = null
     private var allClothingItems: List<ClothingItem> = emptyList()
     private lateinit var clothingAdapter: ClothingAdapter
     private var currentTab = ClothingCategory.TOP
 
     // Frame counter for MediaPipe timestamps
     private val frameCounter = AtomicLong(0)
-
-    // Single processing job — only one blend operation at a time
-    private var processingJob: Job? = null
 
     // FPS tracking
     private var fpsFrameCount = 0
@@ -84,10 +79,20 @@ class MainActivity : AppCompatActivity() {
         permissionHelper = PermissionHelper(this)
         cameraHelper = CameraHelper(this, this)
         poseTracker = PoseTracker(this)
-        warpEngine = ClothingWarpEngine()
         clothingLoader = ClothingLoader(this)
 
         allClothingItems = clothingLoader.loadAll()
+
+        // GPU renderer
+        gpuRenderer = GpuClothingRenderer(this)
+        binding.glOverlay.setEGLConfigChooser(8, 8, 8, 8, 16, 0)
+        binding.glOverlay.setRenderer(gpuRenderer)
+        binding.glOverlay.renderMode = GLSurfaceView.RENDERMODE_WHEN_DIRTY
+
+        // Preload clothing textures
+        for (item in allClothingItems) {
+            gpuRenderer.loadTexture(item)
+        }
 
         binding.debugLogView.log("App started")
         binding.debugLogView.log("Clothes: ${allClothingItems.size} items loaded")
@@ -102,9 +107,6 @@ class MainActivity : AppCompatActivity() {
             } else {
                 if (currentTab == ClothingCategory.TOP) selectedTop.set(item)
                 else selectedPants.set(item)
-            }
-            if (selectedTop.get() == null && selectedPants.get() == null) {
-                binding.resultView.visibility = View.GONE
             }
             logDebug()
         }
@@ -214,7 +216,7 @@ class MainActivity : AppCompatActivity() {
         val topItem = selectedTop.get()
         val pantsItem = selectedPants.get()
 
-        // Update skeleton overlay with proper coordinate transform
+        // Update skeleton overlay
         runOnUiThread {
             binding.skeletonView.apply {
                 updateLandmarks(poseTracker.latestXY)
@@ -224,46 +226,23 @@ class MainActivity : AppCompatActivity() {
             binding.statusText.visibility = View.GONE
         }
 
-        // Update debug log (throttled to ~4 updates/sec)
+        // Update GPU renderer with latest pose and clothing selection
+        runOnUiThread {
+            gpuRenderer.landmarks = poseTracker.latestXY
+            gpuRenderer.topItem = topItem
+            gpuRenderer.pantsItem = pantsItem
+            gpuRenderer.pose = result.bodyPose
+            gpuRenderer.frameW = frame.width
+            gpuRenderer.frameH = frame.height
+            gpuRenderer.isMirrored = cameraHelper.isFrontCamera()
+            binding.glOverlay.requestRender()
+        }
+
+        // Update debug log (throttled)
         val now = System.currentTimeMillis()
         if (now - lastLogTime > 250) {
             lastLogTime = now
             logDebug(result.bodyPose.topReady, result.bodyPose.pantsReady)
-        }
-
-        if (topItem == null && pantsItem == null) return
-
-        // Cancel previous blend, start new one
-        processingJob?.cancel()
-        processingJob = lifecycleScope.launch(Dispatchers.Default) {
-            try {
-                val blendStart = System.currentTimeMillis()
-                val blended = warpEngine.warpAndBlend(
-                    frame, result.bodyPose, result.segmentationMask,
-                    topItem, pantsItem
-                )
-                val blendMs = System.currentTimeMillis() - blendStart
-
-                withContext(Dispatchers.Main) {
-                    lastBlendedBitmap?.recycle()
-                    lastBlendedBitmap = blended
-                    // Scale to preview dimensions for full-screen display
-                    val pv = binding.previewView
-                    val scaled = Bitmap.createScaledBitmap(
-                        blended, pv.width, pv.height, true
-                    )
-                    binding.resultView.setImageBitmap(scaled)
-                    binding.resultView.visibility = View.VISIBLE
-                    binding.debugLogView.log("Blend: ${blendMs}ms")
-                }
-            } catch (e: CancellationException) {
-                // Normal — cancelled by next frame
-            } catch (e: Exception) {
-                Log.e(TAG, "Blend error", e)
-                withContext(Dispatchers.Main) {
-                    binding.debugLogView.log("ERR blend: ${e.message}")
-                }
-            }
         }
     }
 
@@ -284,9 +263,9 @@ class MainActivity : AppCompatActivity() {
     // === Photo Capture ===
 
     private fun capturePhoto() {
-        val bitmap = lastBlendedBitmap ?: return
+        val frame = latestFrame.get() ?: return
         lifecycleScope.launch(Dispatchers.IO) {
-            saveToGallery(bitmap)
+            saveToGallery(frame)
         }
     }
 
@@ -376,9 +355,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        processingJob?.cancel()
         poseTracker.release()
         cameraHelper.release()
-        lastBlendedBitmap?.recycle()
     }
 }

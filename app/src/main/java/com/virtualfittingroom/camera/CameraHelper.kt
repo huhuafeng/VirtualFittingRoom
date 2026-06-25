@@ -42,9 +42,9 @@ class CameraHelper(
         val pv = previewView ?: return
         provider.unbindAll()
 
-        // Preview — 4:3 to match ImageAnalysis aspect ratio
+        // Preview
         val preview = Preview.Builder()
-            .setTargetResolution(Size(1280, 960))
+            .setTargetResolution(Size(1280, 720))
             .build()
             .also { it.setSurfaceProvider(pv.surfaceProvider) }
 
