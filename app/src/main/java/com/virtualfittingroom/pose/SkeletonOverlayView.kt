@@ -20,6 +20,11 @@ class SkeletonOverlayView @JvmOverloads constructor(
     // Flat array: x0,y0, x1,y1, ... (normalized 0~1), null = no detection
     private var landmarks: FloatArray? = null
 
+    // Camera frame dimensions passed from MainActivity for FILL_CENTER coordinate transform
+    private var imageWidth = 0
+    private var imageHeight = 0
+    private var isMirrored = false
+
     private val pointPaint = Paint().apply {
         color = Color.RED
         style = Paint.Style.FILL
@@ -31,6 +36,17 @@ class SkeletonOverlayView @JvmOverloads constructor(
         style = Paint.Style.STROKE
         strokeWidth = 3f
         isAntiAlias = true
+    }
+
+    fun setImageDimensions(w: Int, h: Int) {
+        imageWidth = w
+        imageHeight = h
+        postInvalidate()
+    }
+
+    fun setMirrored(mirrored: Boolean) {
+        isMirrored = mirrored
+        postInvalidate()
     }
 
     // Skeleton connections (MediaPipe landmark indices)
@@ -57,17 +73,35 @@ class SkeletonOverlayView @JvmOverloads constructor(
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         val lm = landmarks ?: return
-        if (lm.size < 33 * 2) return
+        if (lm.size < 33 * 2 || imageWidth == 0 || imageHeight == 0) return
 
-        val w = width.toFloat()
-        val h = height.toFloat()
+        val viewW = width.toFloat()
+        val viewH = height.toFloat()
+        val imgW = imageWidth.toFloat()
+        val imgH = imageHeight.toFloat()
+
+        // FILL_CENTER: scale to fill view, maintain aspect ratio
+        val scale = maxOf(viewW / imgW, viewH / imgH)
+        val displayedW = imgW * scale
+        val displayedH = imgH * scale
+        val offsetX = (viewW - displayedW) / 2f
+        val offsetY = (viewH - displayedH) / 2f
+
+        fun toViewX(lx: Float): Float {
+            val x = if (isMirrored) 1f - lx else lx
+            return x * displayedW + offsetX
+        }
+
+        fun toViewY(ly: Float): Float {
+            return ly * displayedH + offsetY
+        }
 
         // Draw bone connections
         for ((a, b) in connections) {
-            val ax = lm[a * 2] * w
-            val ay = lm[a * 2 + 1] * h
-            val bx = lm[b * 2] * w
-            val by = lm[b * 2 + 1] * h
+            val ax = toViewX(lm[a * 2])
+            val ay = toViewY(lm[a * 2 + 1])
+            val bx = toViewX(lm[b * 2])
+            val by = toViewY(lm[b * 2 + 1])
             if (ax > 0 && bx > 0) {
                 canvas.drawLine(ax, ay, bx, by, linePaint)
             }
@@ -76,8 +110,8 @@ class SkeletonOverlayView @JvmOverloads constructor(
         // Draw keypoints
         val radius = 5f
         for (i in 0 until minOf(lm.size / 2, 33)) {
-            val x = lm[i * 2] * w
-            val y = lm[i * 2 + 1] * h
+            val x = toViewX(lm[i * 2])
+            val y = toViewY(lm[i * 2 + 1])
             if (x > 0) {
                 canvas.drawCircle(x, y, radius, pointPaint)
             }

@@ -214,9 +214,13 @@ class MainActivity : AppCompatActivity() {
         val topItem = selectedTop.get()
         val pantsItem = selectedPants.get()
 
-        // Update skeleton overlay
+        // Update skeleton overlay with proper coordinate transform
         runOnUiThread {
-            binding.skeletonView.updateLandmarks(poseTracker.latestXY)
+            binding.skeletonView.apply {
+                updateLandmarks(poseTracker.latestXY)
+                setImageDimensions(frame.width, frame.height)
+                setMirrored(cameraHelper.isFrontCamera())
+            }
             binding.statusText.visibility = View.GONE
         }
 
@@ -243,7 +247,12 @@ class MainActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     lastBlendedBitmap?.recycle()
                     lastBlendedBitmap = blended
-                    binding.resultView.setImageBitmap(blended)
+                    // Scale to preview dimensions for full-screen display
+                    val pv = binding.previewView
+                    val scaled = Bitmap.createScaledBitmap(
+                        blended, pv.width, pv.height, true
+                    )
+                    binding.resultView.setImageBitmap(scaled)
                     binding.resultView.visibility = View.VISIBLE
                     binding.debugLogView.log("Blend: ${blendMs}ms")
                 }
