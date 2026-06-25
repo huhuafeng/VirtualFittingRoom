@@ -23,6 +23,8 @@
         android:layout_height="match_parent"
         android:scaleType="centerCrop"
         android:visibility="gone"
+        android:clickable="false"
+        android:focusable="false"
         app:layout_constraintTop_toTopOf="parent"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintStart_toStartOf="parent"
