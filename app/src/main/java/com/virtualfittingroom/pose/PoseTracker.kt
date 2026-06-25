@@ -214,10 +214,10 @@ class PoseTracker(private val context: Context) {
         }
 
         fun visible(idx: Int): Boolean {
-            if (idx >= vis.size || vis[idx] < 0.5f) return false
+            if (idx >= vis.size || vis[idx] < 0.3f) return false
             val x = flat[idx * 3]
             val y = flat[idx * 3 + 1]
-            return x in 0.02f..0.98f && y in 0.02f..0.98f
+            return x in 0.01f..0.99f && y in 0.01f..0.99f
         }
 
         val leftShoulder = pt(11)
